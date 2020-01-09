@@ -79,11 +79,11 @@ public strictfp class RobotPlayer {
     }
 
     static void runVaporator() throws GameActionException {
-
+        
     }
 
     static void runDesignSchool() throws GameActionException {
-
+        
     }
 
     static void runFulfillmentCenter() throws GameActionException {
