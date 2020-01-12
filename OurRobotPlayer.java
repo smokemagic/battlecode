@@ -92,7 +92,116 @@ public strictfp class RobotPlayer {
     }
 
     static void runLandscaper() throws GameActionException {
-
+        RobotInfo[] robots = rc.senseNearbyRobots(8);
+        int[] elevation = new int[25];
+        int[] pollution = new int[25];
+        int[] flooding = new int[25];
+        int[] soup = new int[25];
+        position = rc.getLocation();
+        elevation[0] = senseElevation(position);
+        elevation[1] = senseElevation(MapLocation(position.x,position.y+1));
+        elevation[2] = senseElevation(MapLocation(position.x+1,position.y+1));
+        elevation[3] = senseElevation(MapLocation(position.x+1,position.y));
+        elevation[4] = senseElevation(MapLocation(position.x+1,position.y-1));
+        elevation[5] = senseElevation(MapLocation(position.x,position.y-1));
+        elevation[6] = senseElevation(MapLocation(position.x-1,position.y-1));
+        elevation[7] = senseElevation(MapLocation(position.x-1,position.y));
+        elevation[8] = senseElevation(MapLocation(position.x-1,position.y+1));
+        elevation[9] = senseElevation(MapLocation(position.x,position.y+2));
+        elevation[10] = senseElevation(MapLocation(position.x+1,position.y+2));
+        elevation[11] = senseElevation(MapLocation(position.x+2,position.y+2));
+        elevation[12] = senseElevation(MapLocation(position.x+2,position.y+1));
+        elevation[13] = senseElevation(MapLocation(position.x+2,position.y));
+        elevation[14] = senseElevation(MapLocation(position.x+2,position.y-1));
+        elevation[15] = senseElevation(MapLocation(position.x+2,position.y-2));
+        elevation[16] = senseElevation(MapLocation(position.x+1,position.y-2));
+        elevation[17] = senseElevation(MapLocation(position.x,position.y-2));
+        elevation[18] = senseElevation(MapLocation(position.x-1,position.y-2));
+        elevation[19] = senseElevation(MapLocation(position.x-2,position.y-2));
+        elevation[20] = senseElevation(MapLocation(position.x-2,position.y-1));
+        elevation[21] = senseElevation(MapLocation(position.x-2,position.y));
+        elevation[22] = senseElevation(MapLocation(position.x-2,position.y+1));
+        elevation[23] = senseElevation(MapLocation(position.x-2,position.y+2));
+        elevation[24] = senseElevation(MapLocation(position.x-1,position.y+2));
+        
+        pollution[0] = sensePollution(position);
+        pollution[1] = sensePollution(MapLocation(position.x,position.y+1));
+        pollution[2] = sensePollution(MapLocation(position.x+1,position.y+1));
+        pollution[3] = sensePollution(MapLocation(position.x+1,position.y));
+        pollution[4] = sensePollution(MapLocation(position.x+1,position.y-1));
+        pollution[5] = sensePollution(MapLocation(position.x,position.y-1));
+        pollution[6] = sensePollution(MapLocation(position.x-1,position.y-1));
+        pollution[7] = sensePollution(MapLocation(position.x-1,position.y));
+        pollution[8] = sensePollution(MapLocation(position.x-1,position.y+1));
+        pollution[9] = sensePollution(MapLocation(position.x,position.y+2));
+        pollution[10] = sensePollution(MapLocation(position.x+1,position.y+2));
+        pollution[11] = sensePollution(MapLocation(position.x+2,position.y+2));
+        pollution[12] = sensePollution(MapLocation(position.x+2,position.y+1));
+        pollution[13] = sensePollution(MapLocation(position.x+2,position.y));
+        pollution[14] = sensePollution(MapLocation(position.x+2,position.y-1));
+        pollution[15] = sensePollution(MapLocation(position.x+2,position.y-2));
+        pollution[16] = sensePollution(MapLocation(position.x+1,position.y-2));
+        pollution[17] = sensePollution(MapLocation(position.x,position.y-2));
+        pollution[18] = sensePollution(MapLocation(position.x-1,position.y-2));
+        pollution[19] = sensePollution(MapLocation(position.x-2,position.y-2));
+        pollution[20] = sensePollution(MapLocation(position.x-2,position.y-1));
+        pollution[21] = sensePollution(MapLocation(position.x-2,position.y));
+        pollution[22] = sensePollution(MapLocation(position.x-2,position.y+1));
+        pollution[23] = sensePollution(MapLocation(position.x-2,position.y+2));
+        pollution[24] = sensePollution(MapLocation(position.x-1,position.y+2));
+        
+        flooding[0] = senseFlooding(position);
+        flooding[1] = senseFlooding(MapLocation(position.x,position.y+1));
+        flooding[2] = senseFlooding(MapLocation(position.x+1,position.y+1));
+        flooding[3] = senseFlooding(MapLocation(position.x+1,position.y));
+        flooding[4] = senseFlooding(MapLocation(position.x+1,position.y-1));
+        flooding[5] = senseFlooding(MapLocation(position.x,position.y-1));
+        flooding[6] = senseFlooding(MapLocation(position.x-1,position.y-1));
+        flooding[7] = senseFlooding(MapLocation(position.x-1,position.y));
+        flooding[8] = senseFlooding(MapLocation(position.x-1,position.y+1));
+        flooding[9] = senseFlooding(MapLocation(position.x,position.y+2));
+        flooding[10] = senseFlooding(MapLocation(position.x+1,position.y+2));
+        flooding[11] = senseFlooding(MapLocation(position.x+2,position.y+2));
+        flooding[12] = senseFlooding(MapLocation(position.x+2,position.y+1));
+        flooding[13] = senseFlooding(MapLocation(position.x+2,position.y));
+        flooding[14] = senseFlooding(MapLocation(position.x+2,position.y-1));
+        flooding[15] = senseFlooding(MapLocation(position.x+2,position.y-2));
+        flooding[16] = senseFlooding(MapLocation(position.x+1,position.y-2));
+        flooding[17] = senseFlooding(MapLocation(position.x,position.y-2));
+        flooding[18] = senseFlooding(MapLocation(position.x-1,position.y-2));
+        flooding[19] = senseFlooding(MapLocation(position.x-2,position.y-2));
+        flooding[20] = senseFlooding(MapLocation(position.x-2,position.y-1));
+        flooding[21] = senseFlooding(MapLocation(position.x-2,position.y));
+        flooding[22] = senseFlooding(MapLocation(position.x-2,position.y+1));
+        flooding[23] = senseFlooding(MapLocation(position.x-2,position.y+2));
+        flooding[24] = senseFlooding(MapLocation(position.x-1,position.y+2));
+        
+        soup[0] = senseSoup(position);
+        soup[1] = senseSoup(MapLocation(position.x,position.y+1));
+        soup[2] = senseSoup(MapLocation(position.x+1,position.y+1));
+        soup[3] = senseSoup(MapLocation(position.x+1,position.y));
+        soup[4] = senseSoup(MapLocation(position.x+1,position.y-1));
+        soup[5] = senseSoup(MapLocation(position.x,position.y-1));
+        soup[6] = senseSoup(MapLocation(position.x-1,position.y-1));
+        soup[7] = ssenseSoup(MapLocation(position.x-1,position.y));
+        soup[8] = senseSoup(MapLocation(position.x-1,position.y+1));
+        soup[9] = senseSoup(MapLocation(position.x,position.y+2));
+        soup[10] = senseSoup(MapLocation(position.x+1,position.y+2));
+        soup[11] = senseSoup(MapLocation(position.x+2,position.y+2));
+        soup[12] = senseSoup(MapLocation(position.x+2,position.y+1));
+        soup[13] = senseSoup(MapLocation(position.x+2,position.y));
+        soup[14] = senseSoup(MapLocation(position.x+2,position.y-1));
+        soup[15] = senseSoup(MapLocation(position.x+2,position.y-2));
+        soup[16] = senseSoup(MapLocation(position.x+1,position.y-2));
+        soup[17] = senseSoup(MapLocation(position.x,position.y-2));
+        soup[18] = senseSoup(MapLocation(position.x-1,position.y-2));
+        soup[19] = senseSoup(MapLocation(position.x-2,position.y-2));
+        soup[20] = senseSoup(MapLocation(position.x-2,position.y-1));
+        soup[21] = senseSoup(MapLocation(position.x-2,position.y));
+        soup[22] = senseSoup(MapLocation(position.x-2,position.y+1));
+        soup[23] = senseSoup(MapLocation(position.x-2,position.y+2));
+        soup[24] = senseSoup(MapLocation(position.x-1,position.y+2));
+        
     }
 
     static void runDeliveryDrone() throws GameActionException {
