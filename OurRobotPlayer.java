@@ -1,15 +1,29 @@
-//package examplefuncsplayer;
+package lectureplayer;
 import battlecode.common.*;
+import java.lang.Math;
 import java.util.ArrayList;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
 
-    static Direction[] directions = {Direction.NORTH, Direction.EAST, Direction.SOUTH, Direction.WEST};
+    static Direction[] directions = {
+        Direction.NORTH,
+        Direction.NORTHEAST,
+        Direction.EAST,
+        Direction.SOUTHEAST,
+        Direction.SOUTH,
+        Direction.SOUTHWEST,
+        Direction.WEST,
+        Direction.NORTHWEST
+    };
     static RobotType[] spawnedByMiner = {RobotType.REFINERY, RobotType.VAPORATOR, RobotType.DESIGN_SCHOOL,
             RobotType.FULFILLMENT_CENTER, RobotType.NET_GUN};
 
     static int turnCount;
+    static MapLocation hqLoc;
+    static int numMiners = 0;
+    static int numDesignSchools = 0;
+    static ArrayList<MapLocation> soupLocations = new ArrayList<MapLocation>();
 
     /**
      * run() is the method that is called when a robot is instantiated in the Battlecode world.
@@ -32,6 +46,7 @@ public strictfp class RobotPlayer {
                 // Here, we've separated the controls into a different method for each RobotType.
                 // You can add the missing ones or rewrite this into your own control structure.
                 System.out.println("I'm a " + rc.getType() + "! Location " + rc.getLocation());
+                findHQ();
                 switch (rc.getType()) {
                     case HQ:                 runHQ();                break;
                     case MINER:              runMiner();             break;
@@ -54,63 +69,83 @@ public strictfp class RobotPlayer {
         }
     }
 
-    public double incompleteConnection(int[] a,double[] b) {
-        double temp = 0;
-        for(int i=0;i<a.length;i++)
-        {
-            temp+= a[i] * b[i];
-        }
-        return temp;
-    }
-    
-    public double[] sigmoid(double[] value,boolean deriv) {
-        double[] lis = new double[value.length]
-        int num =0
-        if(deriv == False){
-            for(double c : value){
-                lis[num]=(1 / (1 + Math.exp(-c)))
-                num+=1
+    static void findHQ() throws GameActionException {
+        if (hqLoc == null) {
+            // search surroundings for HQ
+            RobotInfo[] robots = rc.senseNearbyRobots();
+            for (RobotInfo robot : robots) {
+                if (robot.type == RobotType.HQ && robot.team == rc.getTeam()) {
+                    hqLoc = robot.location;
+                }
             }
-            return lis
+            if(hqLoc == null) {
+                // if still null, search the blockchain
+                getHqLocFromBlockchain();
+            }
         }
-        for(double g : value){
-            lis[num] = (Math.exp(-g) / Math.pow((1 + Math.exp(-g)),2))
-            num+=1
-        }
-        return lis
     }
-    
+
     static void runHQ() throws GameActionException {
-        for (Direction dir : directions)
-            tryBuild(RobotType.MINER, dir);
+        if(turnCount == 1) {
+            sendHqLoc(rc.getLocation());
+        }
+        if(numMiners < 10) {
+            for (Direction dir : directions)
+                if(tryBuild(RobotType.MINER, dir)){
+                    numMiners++;
+                }
+        }
     }
 
     static void runMiner() throws GameActionException {
-        tryBlockchain();
-        tryMove(randomDirection());
-        if (tryMove(randomDirection()))
-            System.out.println("I moved!");
-        // tryBuild(randomSpawnedByMiner(), randomDirection());
+        updateUnitCounts();
+        updateSoupLocations();
+        checkIfSoupGone();
+
         for (Direction dir : directions)
-            tryBuild(RobotType.FULFILLMENT_CENTER, dir);
+            if (tryRefine(dir))
+                System.out.println("I refined soup! " + rc.getTeamSoup());
         for (Direction dir : directions)
-            if (tryDepositSoup(dir))
-                System.out.println("I deposited soup! " + rc.getTeamSoup());
-        for (Direction dir : directions)
-            if (tryMine(dir))
+            if (tryMine(dir)) {
                 System.out.println("I mined soup! " + rc.getSoupCarrying());
+                MapLocation soupLoc = rc.getLocation().add(dir);
+                if (!soupLocations.contains(soupLoc)) {
+                    broadcastSoupLocation(soupLoc);
+                }
+            }
+        if (numDesignSchools < 3){
+            if(tryBuild(RobotType.DESIGN_SCHOOL, randomDirection()))
+                System.out.println("created a design school");
+        }
+
+        if (rc.getSoupCarrying() == RobotType.MINER.soupLimit) {
+            // time to go back to the HQ
+            if(goTo(hqLoc))
+                System.out.println("moved towards HQ");
+        } else if (soupLocations.size() > 0) {
+            goTo(soupLocations.get(0));
+            rc.setIndicatorLine(rc.getLocation(), soupLocations.get(0), 255, 255, 0);
+        } else if (goTo(randomDirection())) {
+            // otherwise, move randomly as usual
+            System.out.println("I moved randomly!");
+        }
     }
-    
+
     static void runRefinery() throws GameActionException {
         // System.out.println("Pollution: " + rc.sensePollution(rc.getLocation()));
     }
 
     static void runVaporator() throws GameActionException {
-        
+
     }
 
     static void runDesignSchool() throws GameActionException {
-        
+        if (!broadcastedCreation) {
+            broadcastDesignSchoolCreation(rc.getLocation());
+        }
+        for (Direction dir : directions)
+            if(tryBuild(RobotType.LANDSCAPER, dir))
+                System.out.println("made a landscaper");
     }
 
     static void runFulfillmentCenter() throws GameActionException {
@@ -119,167 +154,41 @@ public strictfp class RobotPlayer {
     }
 
     static void runLandscaper() throws GameActionException {
-        double[] weightElevation = new double[25];
-        double[] weightPollution = new double[25];
-        double[] weightFlooding = new double[25];
-        double[] weightSoup = new double[25];
-        double[] weightRobots = new double[10];
-        int[] roboNumbers = [10];
-        RobotInfo[] robots = rc.senseNearbyRobots(8);
-        for(RobotInfo robo: robots){
-            if(robo.type == HQ){
-                roboNumbers[0]+=1;
-            }
-            else if(robo.type==MINER){
-                roboNumbers[1]+=1;
-            }
-            else if(robo.type==COW){
-                roboNumbers[2]+=1;
-            }
-            else if(robo.type==DELIVERY_DRONE){
-                roboNumbers[3]+=1;
-            }
-            else if(robo.type==DESIGN_SCHOOL){
-                roboNumbers[4]+=1;
-            }
-            else if(robo.type==FULFILLMENT_CENTER){
-                roboNumbers[5]+=1;
-            }
-            else if(robo.type==LANDSCAPER){
-                roboNumbers[6]+=1;
-            }
-            else if(robo.type==NET_GUN){
-                roboNumbers[7]+=1;
-            }
-            else if(robo.type==REFINERY){
-                roboNumbers[8]+=1;
-            }
-            else{
-                roboNumbers[9]+=1;
+        if(rc.getDirtCarrying() == 0){
+            tryDig();
+        }
+
+        MapLocation bestPlaceToBuildWall = null;
+        // find best place to build
+        if(hqLoc != null) {
+            int lowestElevation = 9999999;
+            for (Direction dir : directions) {
+                MapLocation tileToCheck = hqLoc.add(dir);
+                if(rc.getLocation().distanceSquaredTo(tileToCheck) < 4
+                        && rc.canDepositDirt(rc.getLocation().directionTo(tileToCheck))) {
+                    if (rc.senseElevation(tileToCheck) < lowestElevation) {
+                        lowestElevation = rc.senseElevation(tileToCheck);
+                        bestPlaceToBuildWall = tileToCheck;
+                    }
+                }
             }
         }
-        int[] elevation = new int[25];
-        int[] pollution = new int[25];
-        boolean[] flooding = new boolean[25];
-        int[] soup = new int[25];
-        position = rc.getLocation();
-        elevation[0] = senseElevation(position);
-        elevation[1] = senseElevation(MapLocation(position.x,position.y+1));
-        elevation[2] = senseElevation(MapLocation(position.x+1,position.y+1));
-        elevation[3] = senseElevation(MapLocation(position.x+1,position.y));
-        elevation[4] = senseElevation(MapLocation(position.x+1,position.y-1));
-        elevation[5] = senseElevation(MapLocation(position.x,position.y-1));
-        elevation[6] = senseElevation(MapLocation(position.x-1,position.y-1));
-        elevation[7] = senseElevation(MapLocation(position.x-1,position.y));
-        elevation[8] = senseElevation(MapLocation(position.x-1,position.y+1));
-        elevation[9] = senseElevation(MapLocation(position.x,position.y+2));
-        elevation[10] = senseElevation(MapLocation(position.x+1,position.y+2));
-        elevation[11] = senseElevation(MapLocation(position.x+2,position.y+2));
-        elevation[12] = senseElevation(MapLocation(position.x+2,position.y+1));
-        elevation[13] = senseElevation(MapLocation(position.x+2,position.y));
-        elevation[14] = senseElevation(MapLocation(position.x+2,position.y-1));
-        elevation[15] = senseElevation(MapLocation(position.x+2,position.y-2));
-        elevation[16] = senseElevation(MapLocation(position.x+1,position.y-2));
-        elevation[17] = senseElevation(MapLocation(position.x,position.y-2));
-        elevation[18] = senseElevation(MapLocation(position.x-1,position.y-2));
-        elevation[19] = senseElevation(MapLocation(position.x-2,position.y-2));
-        elevation[20] = senseElevation(MapLocation(position.x-2,position.y-1));
-        elevation[21] = senseElevation(MapLocation(position.x-2,position.y));
-        elevation[22] = senseElevation(MapLocation(position.x-2,position.y+1));
-        elevation[23] = senseElevation(MapLocation(position.x-2,position.y+2));
-        elevation[24] = senseElevation(MapLocation(position.x-1,position.y+2));
-        
-        pollution[0] = sensePollution(position);
-        pollution[1] = sensePollution(MapLocation(position.x,position.y+1));
-        pollution[2] = sensePollution(MapLocation(position.x+1,position.y+1));
-        pollution[3] = sensePollution(MapLocation(position.x+1,position.y));
-        pollution[4] = sensePollution(MapLocation(position.x+1,position.y-1));
-        pollution[5] = sensePollution(MapLocation(position.x,position.y-1));
-        pollution[6] = sensePollution(MapLocation(position.x-1,position.y-1));
-        pollution[7] = sensePollution(MapLocation(position.x-1,position.y));
-        pollution[8] = sensePollution(MapLocation(position.x-1,position.y+1));
-        pollution[9] = sensePollution(MapLocation(position.x,position.y+2));
-        pollution[10] = sensePollution(MapLocation(position.x+1,position.y+2));
-        pollution[11] = sensePollution(MapLocation(position.x+2,position.y+2));
-        pollution[12] = sensePollution(MapLocation(position.x+2,position.y+1));
-        pollution[13] = sensePollution(MapLocation(position.x+2,position.y));
-        pollution[14] = sensePollution(MapLocation(position.x+2,position.y-1));
-        pollution[15] = sensePollution(MapLocation(position.x+2,position.y-2));
-        pollution[16] = sensePollution(MapLocation(position.x+1,position.y-2));
-        pollution[17] = sensePollution(MapLocation(position.x,position.y-2));
-        pollution[18] = sensePollution(MapLocation(position.x-1,position.y-2));
-        pollution[19] = sensePollution(MapLocation(position.x-2,position.y-2));
-        pollution[20] = sensePollution(MapLocation(position.x-2,position.y-1));
-        pollution[21] = sensePollution(MapLocation(position.x-2,position.y));
-        pollution[22] = sensePollution(MapLocation(position.x-2,position.y+1));
-        pollution[23] = sensePollution(MapLocation(position.x-2,position.y+2));
-        pollution[24] = sensePollution(MapLocation(position.x-1,position.y+2));
-        
-        flooding[0] = senseFlooding(position);
-        flooding[1] = senseFlooding(MapLocation(position.x,position.y+1));
-        flooding[2] = senseFlooding(MapLocation(position.x+1,position.y+1));
-        flooding[3] = senseFlooding(MapLocation(position.x+1,position.y));
-        flooding[4] = senseFlooding(MapLocation(position.x+1,position.y-1));
-        flooding[5] = senseFlooding(MapLocation(position.x,position.y-1));
-        flooding[6] = senseFlooding(MapLocation(position.x-1,position.y-1));
-        flooding[7] = senseFlooding(MapLocation(position.x-1,position.y));
-        flooding[8] = senseFlooding(MapLocation(position.x-1,position.y+1));
-        flooding[9] = senseFlooding(MapLocation(position.x,position.y+2));
-        flooding[10] = senseFlooding(MapLocation(position.x+1,position.y+2));
-        flooding[11] = senseFlooding(MapLocation(position.x+2,position.y+2));
-        flooding[12] = senseFlooding(MapLocation(position.x+2,position.y+1));
-        flooding[13] = senseFlooding(MapLocation(position.x+2,position.y));
-        flooding[14] = senseFlooding(MapLocation(position.x+2,position.y-1));
-        flooding[15] = senseFlooding(MapLocation(position.x+2,position.y-2));
-        flooding[16] = senseFlooding(MapLocation(position.x+1,position.y-2));
-        flooding[17] = senseFlooding(MapLocation(position.x,position.y-2));
-        flooding[18] = senseFlooding(MapLocation(position.x-1,position.y-2));
-        flooding[19] = senseFlooding(MapLocation(position.x-2,position.y-2));
-        flooding[20] = senseFlooding(MapLocation(position.x-2,position.y-1));
-        flooding[21] = senseFlooding(MapLocation(position.x-2,position.y));
-        flooding[22] = senseFlooding(MapLocation(position.x-2,position.y+1));
-        flooding[23] = senseFlooding(MapLocation(position.x-2,position.y+2));
-        flooding[24] = senseFlooding(MapLocation(position.x-1,position.y+2));
-        int[] flooding2 = new int[25];
-        int num2 = 0;
-        for(boolean tre :flooding){
-            if(tre==True){
-                flooding2[num2]=1;
+
+        if (Math.random() < 0.4){
+            // build the wall
+            if (bestPlaceToBuildWall != null) {
+                rc.depositDirt(rc.getLocation().directionTo(bestPlaceToBuildWall));
+                rc.setIndicatorDot(bestPlaceToBuildWall, 0, 255, 0);
+                System.out.println("building a wall");
             }
-            else{
-                flooding2[num2]=0;
-            }
-            num2+=1;
         }
-        
-        soup[0] = senseSoup(position);
-        soup[1] = senseSoup(MapLocation(position.x,position.y+1));
-        soup[2] = senseSoup(MapLocation(position.x+1,position.y+1));
-        soup[3] = senseSoup(MapLocation(position.x+1,position.y));
-        soup[4] = senseSoup(MapLocation(position.x+1,position.y-1));
-        soup[5] = senseSoup(MapLocation(position.x,position.y-1));
-        soup[6] = senseSoup(MapLocation(position.x-1,position.y-1));
-        soup[7] = ssenseSoup(MapLocation(position.x-1,position.y));
-        soup[8] = senseSoup(MapLocation(position.x-1,position.y+1));
-        soup[9] = senseSoup(MapLocation(position.x,position.y+2));
-        soup[10] = senseSoup(MapLocation(position.x+1,position.y+2));
-        soup[11] = senseSoup(MapLocation(position.x+2,position.y+2));
-        soup[12] = senseSoup(MapLocation(position.x+2,position.y+1));
-        soup[13] = senseSoup(MapLocation(position.x+2,position.y));
-        soup[14] = senseSoup(MapLocation(position.x+2,position.y-1));
-        soup[15] = senseSoup(MapLocation(position.x+2,position.y-2));
-        soup[16] = senseSoup(MapLocation(position.x+1,position.y-2));
-        soup[17] = senseSoup(MapLocation(position.x,position.y-2));
-        soup[18] = senseSoup(MapLocation(position.x-1,position.y-2));
-        soup[19] = senseSoup(MapLocation(position.x-2,position.y-2));
-        soup[20] = senseSoup(MapLocation(position.x-2,position.y-1));
-        soup[21] = senseSoup(MapLocation(position.x-2,position.y));
-        soup[22] = senseSoup(MapLocation(position.x-2,position.y+1));
-        soup[23] = senseSoup(MapLocation(position.x-2,position.y+2));
-        soup[24] = senseSoup(MapLocation(position.x-1,position.y+2));
-        
-        double[] hiddenLayer = new double[5];
-        hiddenLayer[0] = 
+
+        // otherwise try to get to the hq
+        if(hqLoc != null){
+            goTo(hqLoc);
+        } else {
+            tryMove(randomDirection());
+        }
     }
 
     static void runDeliveryDrone() throws GameActionException {
@@ -303,6 +212,16 @@ public strictfp class RobotPlayer {
 
     }
 
+    static void checkIfSoupGone() throws GameActionException {
+        if (soupLocations.size() > 0) {
+            MapLocation targetSoupLoc = soupLocations.get(0);
+            if (rc.canSenseLocation(targetSoupLoc)
+                    && rc.senseSoup(targetSoupLoc) == 0) {
+                soupLocations.remove(0);
+            }
+        }
+    }
+
     /**
      * Returns a random Direction.
      *
@@ -321,6 +240,26 @@ public strictfp class RobotPlayer {
         return spawnedByMiner[(int) (Math.random() * spawnedByMiner.length)];
     }
 
+    static boolean nearbyRobot(RobotType target) throws GameActionException {
+        RobotInfo[] robots = rc.senseNearbyRobots();
+        for(RobotInfo r : robots) {
+            if(r.getType() == target) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    static boolean tryDig() throws GameActionException {
+        Direction dir = randomDirection();
+        if(rc.canDigDirt(dir)){
+            rc.digDirt(dir);
+            rc.setIndicatorDot(rc.getLocation().add(dir), 255, 0, 0);
+            return true;
+        }
+        return false;
+    }
+
     static boolean tryMove() throws GameActionException {
         for (Direction dir : directions)
             if (tryMove(dir))
@@ -337,6 +276,21 @@ public strictfp class RobotPlayer {
         //     return tryMove(Direction.NORTH);
     }
 
+    // tries to move in the general direction of dir
+    static boolean goTo(Direction dir) throws GameActionException {
+        Direction[] toTry = {dir, dir.rotateLeft(), dir.rotateRight(), dir.rotateLeft().rotateLeft(), dir.rotateRight().rotateRight()};
+        for (Direction d : toTry){
+            if(tryMove(d))
+                return true;
+        }
+        return false;
+    }
+
+    // navigate towards a particular location
+    static boolean goTo(MapLocation destination) throws GameActionException {
+        return goTo(rc.getLocation().directionTo(destination));
+    }
+
     /**
      * Attempts to move in a given direction.
      *
@@ -345,8 +299,7 @@ public strictfp class RobotPlayer {
      * @throws GameActionException
      */
     static boolean tryMove(Direction dir) throws GameActionException {
-        // System.out.println("I am trying to move " + dir + "; " + rc.isReady() + " " + rc.getCooldownTurns() + " " + rc.canMove(dir));
-        if (rc.isReady() && rc.canMove(dir)) {
+        if (rc.isReady() && rc.canMove(dir) && !rc.senseFlooding(rc.getLocation().add(dir))) {
             rc.move(dir);
             return true;
         } else return false;
@@ -388,7 +341,7 @@ public strictfp class RobotPlayer {
      * @return true if a move was performed
      * @throws GameActionException
      */
-    static boolean tryDepositSoup(Direction dir) throws GameActionException {
+    static boolean tryRefine(Direction dir) throws GameActionException {
         if (rc.isReady() && rc.canDepositSoup(dir)) {
             rc.depositSoup(dir, rc.getSoupCarrying());
             return true;
@@ -398,13 +351,92 @@ public strictfp class RobotPlayer {
 
     static void tryBlockchain() throws GameActionException {
         if (turnCount < 3) {
-            int[] message = new int[10];
-            for (int i = 0; i < 10; i++) {
+            int[] message = new int[7];
+            for (int i = 0; i < 7; i++) {
                 message[i] = 123;
             }
             if (rc.canSubmitTransaction(message, 10))
                 rc.submitTransaction(message, 10);
         }
         // System.out.println(rc.getRoundMessages(turnCount-1));
+    }
+
+    /* COMMUNICATIONS STUFF */
+    // all messages from our team should start with this so we can tell them apart
+    static final int teamSecret = 444444444;
+    // the second entry in every message tells us what kind of message it is. e.g. 0 means it contains the HQ location
+    static final String[] messageType = {
+        "HQ loc",
+        "design school created",
+        "soup location",
+    };
+
+    public static void sendHqLoc(MapLocation loc) throws GameActionException {
+        int[] message = new int[7];
+        message[0] = teamSecret;
+        message[1] = 0;
+        message[2] = loc.x; // x coord of HQ
+        message[3] = loc.y; // y coord of HQ
+        if (rc.canSubmitTransaction(message, 3))
+            rc.submitTransaction(message, 3);
+    }
+
+    public static void getHqLocFromBlockchain() throws GameActionException {
+        System.out.println("B L O C K C H A I N");
+        for (int i = 1; i < rc.getRoundNum(); i++){
+            for(Transaction tx : rc.getBlock(i)) {
+                int[] mess = tx.getMessage();
+                if(mess[0] == teamSecret && mess[1] == 0){
+                    System.out.println("found the HQ!");
+                    hqLoc = new MapLocation(mess[2], mess[3]);
+                }
+            }
+        }
+    }
+
+    public static boolean broadcastedCreation = false;
+    public static void broadcastDesignSchoolCreation(MapLocation loc) throws GameActionException {
+        int[] message = new int[7];
+        message[0] = teamSecret;
+        message[1] = 1;
+        message[2] = loc.x; // x coord of HQ
+        message[3] = loc.y; // y coord of HQ
+        if (rc.canSubmitTransaction(message, 3)) {
+            rc.submitTransaction(message, 3);
+            broadcastedCreation = true;
+        }
+    }
+
+    // check the latest block for unit creation messages
+    public static void updateUnitCounts() throws GameActionException {
+        for(Transaction tx : rc.getBlock(rc.getRoundNum() - 1)) {
+            int[] mess = tx.getMessage();
+            if(mess[0] == teamSecret && mess[1] == 1){
+                System.out.println("heard about a cool new school");
+                numDesignSchools += 1;
+            }
+        }
+    }
+
+    public static void broadcastSoupLocation(MapLocation loc ) throws GameActionException {
+        int[] message = new int[7];
+        message[0] = teamSecret;
+        message[1] = 2;
+        message[2] = loc.x; // x coord of HQ
+        message[3] = loc.y; // y coord of HQ
+        if (rc.canSubmitTransaction(message, 3)) {
+            rc.submitTransaction(message, 3);
+            System.out.println("new soup!" + loc);
+        }
+    }
+
+    public static void updateSoupLocations() throws GameActionException {
+        for(Transaction tx : rc.getBlock(rc.getRoundNum() - 1)) {
+            int[] mess = tx.getMessage();
+            if(mess[0] == teamSecret && mess[1] == 2){
+                System.out.println("heard about a tasty new soup location");
+                soupLocations.add(new MapLocation(mess[2], mess[3]));
+            }
+        }
     }
 }
