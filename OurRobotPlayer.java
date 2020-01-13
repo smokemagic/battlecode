@@ -54,28 +54,7 @@ public strictfp class RobotPlayer {
         }
     }
 
-    static void runHQ() throws GameActionException {
-        for (Direction dir : directions)
-            tryBuild(RobotType.MINER, dir);
-    }
-
-    static void runMiner() throws GameActionException {
-        tryBlockchain();
-        tryMove(randomDirection());
-        if (tryMove(randomDirection()))
-            System.out.println("I moved!");
-        // tryBuild(randomSpawnedByMiner(), randomDirection());
-        for (Direction dir : directions)
-            tryBuild(RobotType.FULFILLMENT_CENTER, dir);
-        for (Direction dir : directions)
-            if (tryDepositSoup(dir))
-                System.out.println("I deposited soup! " + rc.getTeamSoup());
-        for (Direction dir : directions)
-            if (tryMine(dir))
-                System.out.println("I mined soup! " + rc.getSoupCarrying());
-    }
-
-    public double incompleteConnection(double[] a,double[] b) {
+    public double incompleteConnection(int[] a,double[] b) {
         double temp = 0;
         for(int i=0;i<a.length;i++)
         {
@@ -101,6 +80,27 @@ public strictfp class RobotPlayer {
         return lis
     }
     
+    static void runHQ() throws GameActionException {
+        for (Direction dir : directions)
+            tryBuild(RobotType.MINER, dir);
+    }
+
+    static void runMiner() throws GameActionException {
+        tryBlockchain();
+        tryMove(randomDirection());
+        if (tryMove(randomDirection()))
+            System.out.println("I moved!");
+        // tryBuild(randomSpawnedByMiner(), randomDirection());
+        for (Direction dir : directions)
+            tryBuild(RobotType.FULFILLMENT_CENTER, dir);
+        for (Direction dir : directions)
+            if (tryDepositSoup(dir))
+                System.out.println("I deposited soup! " + rc.getTeamSoup());
+        for (Direction dir : directions)
+            if (tryMine(dir))
+                System.out.println("I mined soup! " + rc.getSoupCarrying());
+    }
+    
     static void runRefinery() throws GameActionException {
         // System.out.println("Pollution: " + rc.sensePollution(rc.getLocation()));
     }
@@ -119,16 +119,48 @@ public strictfp class RobotPlayer {
     }
 
     static void runLandscaper() throws GameActionException {
-        double[] weightElevation = new double[25]
-        double[] weightPollution = new double[25]
-        double[] weightFlooding = new double[25]
-        double[] weightSoup = new double[25]
-        double[] weightRobots = new double[10]
+        double[] weightElevation = new double[25];
+        double[] weightPollution = new double[25];
+        double[] weightFlooding = new double[25];
+        double[] weightSoup = new double[25];
+        double[] weightRobots = new double[10];
+        int[] roboNumbers = [10];
         RobotInfo[] robots = rc.senseNearbyRobots(8);
-        
+        for(RobotInfo robo: robots){
+            if(robo.type == HQ){
+                roboNumbers[0]+=1;
+            }
+            else if(robo.type==MINER){
+                roboNumbers[1]+=1;
+            }
+            else if(robo.type==COW){
+                roboNumbers[2]+=1;
+            }
+            else if(robo.type==DELIVERY_DRONE){
+                roboNumbers[3]+=1;
+            }
+            else if(robo.type==DESIGN_SCHOOL){
+                roboNumbers[4]+=1;
+            }
+            else if(robo.type==FULFILLMENT_CENTER){
+                roboNumbers[5]+=1;
+            }
+            else if(robo.type==LANDSCAPER){
+                roboNumbers[6]+=1;
+            }
+            else if(robo.type==NET_GUN){
+                roboNumbers[7]+=1;
+            }
+            else if(robo.type==REFINERY){
+                roboNumbers[8]+=1;
+            }
+            else{
+                roboNumbers[9]+=1;
+            }
+        }
         int[] elevation = new int[25];
         int[] pollution = new int[25];
-        int[] flooding = new int[25];
+        boolean[] flooding = new boolean[25];
         int[] soup = new int[25];
         position = rc.getLocation();
         elevation[0] = senseElevation(position);
@@ -208,6 +240,17 @@ public strictfp class RobotPlayer {
         flooding[22] = senseFlooding(MapLocation(position.x-2,position.y+1));
         flooding[23] = senseFlooding(MapLocation(position.x-2,position.y+2));
         flooding[24] = senseFlooding(MapLocation(position.x-1,position.y+2));
+        int[] flooding2 = new int[25];
+        int num2 = 0;
+        for(boolean tre :flooding){
+            if(tre==True){
+                flooding2[num2]=1;
+            }
+            else{
+                flooding2[num2]=0;
+            }
+            num2+=1;
+        }
         
         soup[0] = senseSoup(position);
         soup[1] = senseSoup(MapLocation(position.x,position.y+1));
@@ -235,6 +278,8 @@ public strictfp class RobotPlayer {
         soup[23] = senseSoup(MapLocation(position.x-2,position.y+2));
         soup[24] = senseSoup(MapLocation(position.x-1,position.y+2));
         
+        double[] hiddenLayer = new double[5];
+        hiddenLayer[0] = 
     }
 
     static void runDeliveryDrone() throws GameActionException {
