@@ -1,5 +1,6 @@
 //package examplefuncsplayer;
 import battlecode.common.*;
+import java.util.ArrayList;
 
 public strictfp class RobotPlayer {
     static RobotController rc;
@@ -74,6 +75,32 @@ public strictfp class RobotPlayer {
                 System.out.println("I mined soup! " + rc.getSoupCarrying());
     }
 
+    public double incompleteConnection(double[] a,double[] b) {
+        double temp = 0;
+        for(int i=0;i<a.length;i++)
+        {
+            temp+= a[i] * b[i];
+        }
+        return temp;
+    }
+    
+    public double[] sigmoid(double[] value,boolean deriv) {
+        double[] lis = new double[value.length]
+        int num =0
+        if(deriv == False){
+            for(double c : value){
+                lis[num]=(1 / (1 + Math.exp(-c)))
+                num+=1
+            }
+            return lis
+        }
+        for(double g : value){
+            lis[num] = (Math.exp(-g) / Math.pow((1 + Math.exp(-g)),2))
+            num+=1
+        }
+        return lis
+    }
+    
     static void runRefinery() throws GameActionException {
         // System.out.println("Pollution: " + rc.sensePollution(rc.getLocation()));
     }
@@ -92,7 +119,13 @@ public strictfp class RobotPlayer {
     }
 
     static void runLandscaper() throws GameActionException {
+        double[] weightElevation = new double[25]
+        double[] weightPollution = new double[25]
+        double[] weightFlooding = new double[25]
+        double[] weightSoup = new double[25]
+        double[] weightRobots = new double[10]
         RobotInfo[] robots = rc.senseNearbyRobots(8);
+        
         int[] elevation = new int[25];
         int[] pollution = new int[25];
         int[] flooding = new int[25];
